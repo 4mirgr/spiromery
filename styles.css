@@ -147,6 +147,7 @@ kbd,bdi[dir=ltr],.numeric{font-variant-numeric:tabular-nums}
 .volume-panel .stats dt,.volume-panel .stats dd,.volume-panel .stats small{color:var(--green-dark)}
 @media(max-width:900px){
   .shell,.header-inner{width:calc(100% - 36px)}
+  .top-nav a{padding-inline:9px}
   .hero-copy{padding:28px}
   .hero-art{max-width:64%}
   .cards{gap:10px}
