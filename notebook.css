@@ -5,7 +5,16 @@
   --book-band: #edf5e9;
   --book-rule: #d5e3d8;
   --book-radius: 18px;
+  --book-cover-direction: left;
+  --book-art-position: left 24% center;
+  --book-art-mobile-position: left center;
   min-width: 0;
+}
+
+.notebook[dir="ltr"] {
+  --book-cover-direction: right;
+  --book-art-position: right 24% center;
+  --book-art-mobile-position: right center;
 }
 
 .notebook-cover {
@@ -24,8 +33,8 @@
   z-index: -1;
   inset: 0;
   background:
-    linear-gradient(to left, #0d3a30 35%, #0d3a30cd 58%, #0d3a3033 85%),
-    url('./assets/lungs.webp') left 24% center / auto 105% no-repeat;
+    linear-gradient(to var(--book-cover-direction), #0d3a30 35%, #0d3a30cd 58%, #0d3a3033 85%),
+    url('./assets/lungs.webp') var(--book-art-position) / auto 105% no-repeat;
   content: "";
 }
 
@@ -320,14 +329,14 @@
   }
 
   .notebook-cover::before {
-    background-position: center, left center;
+    background-position: center, var(--book-art-mobile-position);
   }
 }
 
 @media (max-width: 480px) {
   .notebook-cover::before {
     background-image:
-      linear-gradient(to left, #0d3a30 12%, #0d3a30ee 45%, #0d3a3088 100%),
+      linear-gradient(to var(--book-cover-direction), #0d3a30 12%, #0d3a30ee 45%, #0d3a3088 100%),
       url('./assets/lungs.webp');
   }
 
@@ -344,9 +353,32 @@
   }
 }
 
+@counter-style notebook-fa-digits {
+  system: numeric;
+  symbols: "۰" "۱" "۲" "۳" "۴" "۵" "۶" "۷" "۸" "۹";
+}
+
 @page notebook-print {
   size: A4;
   margin: 14mm;
+
+  @bottom-center {
+    content: "صفحه " counter(page, notebook-fa-digits) " از " counter(pages, notebook-fa-digits);
+    font: 9pt Vazirmatn, sans-serif;
+    direction: rtl;
+    color: #586a62;
+  }
+}
+
+@page notebook-print-en {
+  size: A4;
+  margin: 14mm;
+
+  @bottom-center {
+    content: "Page " counter(page) " of " counter(pages);
+    font: 9pt Vazirmatn, sans-serif;
+    color: #586a62;
+  }
 }
 
 @media print {
@@ -357,6 +389,10 @@
   .notebook {
     page: notebook-print;
     font-size: 10pt;
+  }
+
+  .notebook[lang="en"] {
+    page: notebook-print-en;
   }
 
   .notebook-cover,

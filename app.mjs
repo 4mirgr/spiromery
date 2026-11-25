@@ -1,28 +1,61 @@
-import { cases } from './cases.mjs';
-import { lessons, modules, references } from './curriculum.mjs';
-import { artifacts, bronchodilator, lungVolumes, maneuver } from './model.mjs';
+import { cases as faCases } from './cases.mjs';
+import { cases as enCases, caseLabels as enCaseLabels } from './cases.en.mjs';
+import * as faCourse from './curriculum.mjs';
+import * as enCourse from './curriculum.en.mjs';
+import { bronchodilator, lungVolumes, maneuver } from './model.mjs';
 import { colors, drawChart, drawBreathingChart } from './charts.mjs';
-import { glossary, sessions } from './lesson-notes.mjs';
+import * as faNotebook from './lesson-notes.mjs';
+import * as enNotebook from './lesson-notes.en.mjs';
+import { createTranslator } from './locale.mjs';
 import { expandTerms, renderNotebook, renderSessionContent } from './notebook.mjs';
 
 const main = document.querySelector('main');
 const localKey = 'gerami.spirometry.learn.v1';
 const caseKey = 'gerami.spirometry.cases.v1';
-const fa = new Intl.NumberFormat('fa-IR');
+const languageKey = 'gerami.spirometry.language';
+const languageToggle = document.querySelector('#language-toggle');
+const numberFormatters = { fa: new Intl.NumberFormat('fa-IR'), en: new Intl.NumberFormat('en') };
+let locale = 'fa';
+try {
+  if (localStorage.getItem(languageKey) === 'en') locale = 'en';
+} catch { /* The default language remains available without storage. */ }
+let t;
+let cases, lessons, modules, references, glossary, sessions, notesByLesson;
+const numberLabel = value => numberFormatters[locale].format(value);
 const format = (value, digits = 2) => value.toFixed(digits);
 const num = value => `<bdi dir="ltr">${value}</bdi>`;
 const lessonAnswers = new Map();
 const caseProgress = new Map();
-const notesByLesson = new Map(sessions.map(session => [session.lessonId, session]));
-const stages = ['خواندن تست', 'استدلال تشخیصی', 'تصمیم بالینی'];
+const stages = ['readTest', 'diagnosticReasoning', 'clinicalDecision'];
+const artifactLabels = { none:'maneuverComplete', early:'maneuverEarly', cough:'maneuverCough', slow:'maneuverSlow' };
 const volumeFields = [
-  ['irv','IRV','ذخیره دمی',2.8], ['tv','TV','حجم جاری',0.5],
-  ['erv','ERV','ذخیره بازدمی',1.1], ['rv','RV','باقی‌مانده',1.4],
+  ['irv','IRV','inspiratoryReserve',2.8], ['tv','TV','tidalVolume',0.5],
+  ['erv','ERV','expiratoryReserve',1.1], ['rv','RV','residualVolume',1.4],
 ];
 const volumes = Object.fromEntries(volumeFields.map(([key,,,value]) => [key,value]));
 const lab = { caseId:'normal', artifact:'none', mode:'flow', reference:false, showAfter:false };
 let chartCleanup;
+let lastRoute = '';
 let complete = new Set();
+
+function applyLocale() {
+  const english = locale === 'en';
+  t = createTranslator(locale);
+  cases = english ? enCases : faCases;
+  ({ lessons, modules, references } = english ? enCourse : faCourse);
+  ({ glossary, sessions } = english ? enNotebook : faNotebook);
+  notesByLesson = new Map(sessions.map(session => [session.lessonId, session]));
+  document.documentElement.lang = locale;
+  document.documentElement.dir = english ? 'ltr' : 'rtl';
+  document.title = t('pageTitle');
+  document.querySelector('meta[name="description"]').content = t('pageDescription');
+  for (const node of document.querySelectorAll('[data-message]')) node.textContent = t(node.dataset.message);
+  for (const node of document.querySelectorAll('[data-label-message]')) node.setAttribute('aria-label', t(node.dataset.labelMessage));
+  languageToggle.title = t('languageAction');
+  languageToggle.hidden = false;
+}
+
+applyLocale();
 
 try {
   const saved = JSON.parse(localStorage.getItem(localKey) ?? '[]');
@@ -62,38 +95,38 @@ function home() {
     <section class="hero">
       <img class="hero-art" src="./assets/lungs.webp" width="651" height="700" alt="" fetchpriority="high">
       <div class="hero-copy">
-        <span class="eyebrow">آموزش ویژه رزیدنت طب داخلی</span>
-        <h1>آزمایشگاه اسپیرومتری</h1>
-        <p>از اولین مانور تا تفسیر منحنی و تصمیم بالینی، اسپیرومتری را قدم‌به‌قدم تمرین کنید.</p>
+        <span class="eyebrow">${t('audience')}</span>
+        <h1>${t('appTitle')}</h1>
+        <p>${t('heroDescription')}</p>
         <div class="actions">
-          ${button(next ? '#course/' + next.id : '#course', complete.size && next ? 'ادامه یادگیری ←' : next ? 'شروع دوره ←' : 'مرور دوره ←', true)}
-          <a class="btn quiet" href="#lab">ورود به شبیه‌ساز</a>
+          ${button(next ? '#course/' + next.id : '#course', complete.size && next ? t('resume') : next ? t('start') : t('reviewCourse'), true)}
+          <a class="btn quiet" href="#lab">${t('openLab')}</a>
         </div>
       </div>
     </section>
     <div class="meta-strip">
-      <div><strong>${fa.format(lessons.length)} درس</strong><span>از مبانی تا درمان</span></div>
-      <div><strong>${fa.format(cases.length)} کیس</strong><span>با بازخورد مرحله‌ای</span></div>
-      <div><strong>ATS/ERS</strong><span>همراه GINA و GOLD</span></div>
+      <div><strong>${t('lessonCount', {count:numberLabel(lessons.length)})}</strong><span>${t('scope')}</span></div>
+      <div><strong>${t('caseCount', {count:numberLabel(cases.length)})}</strong><span>${t('stagedFeedback')}</span></div>
+      <div><strong>ATS/ERS</strong><span>${t('guidance')}</span></div>
     </div>
-    <div class="section-head"><div><h2>مسیر یادگیری</h2><p>سه گام برای خواندن و به‌کارگیری اسپیرومتری در بالین</p></div><a href="#course">همه درس‌ها ←</a></div>
+    <div class="section-head"><div><h2>${t('learningPath')}</h2><p>${t('pathDescription')}</p></div><a href="#course">${t('browseLessons')}</a></div>
     <div class="cards">
       ${[
-        ['volumes','◫','',modules[0],'حجم‌های ریه، مانور اجباری و کنترل کیفیت تست'],
-        ['reference','∿','blue',modules[1],'خواندن منحنی، مقایسه با LLN و تفسیر پاسخ دارویی'],
-        ['asthma-care','✚','amber',modules[2],'تشخیص افتراقی، درمان علت‌محور و گزارش‌نویسی'],
-      ].map(([id,icon,color,title,body]) => `<a class="card" href="#course/${id}"><span class="card-symbol ${color}" aria-hidden="true">${icon}</span><h3>${title}</h3><p>${body}</p><span class="card-link">ورود به فصل ←</span></a>`).join('')}
+        ['volumes','◫','',modules[0],t('basicsDescription')],
+        ['reference','∿','blue',modules[1],t('interpretationDescription')],
+        ['asthma-care','✚','amber',modules[2],t('clinicalDescription')],
+      ].map(([id,icon,color,title,body]) => `<a class="card" href="#course/${id}"><span class="card-symbol ${color}" aria-hidden="true">${icon}</span><h3>${title}</h3><p>${body}</p><span class="card-link">${t('openModule')}</span></a>`).join('')}
     </div>`;
 }
 
 function course() {
-  main.innerHTML = head('دوره آموزش اسپیرومتری','درس‌ها به ترتیب از فیزیولوژی پایه به حل مسئله بالینی می‌رسند.') + `
-    <div class="panel progress-panel"><strong>${fa.format(complete.size)} از ${fa.format(lessons.length)} درس</strong><progress value="${complete.size}" max="${lessons.length}" aria-label="درس‌های تکمیل‌شده"></progress></div>
+  main.innerHTML = head(t('courseTitle'),t('courseDescription')) + `
+    <div class="panel progress-panel"><strong>${t('lessonProgress', {done:numberLabel(complete.size),total:numberLabel(lessons.length)})}</strong><progress value="${complete.size}" max="${lessons.length}" aria-label="${t('completedLessons')}"></progress></div>
     <div class="stack">${modules.map((title,index) => `<section class="panel module-panel"><h2>${title}</h2>${
       lessons.map((lesson, i) => {
         if (lesson.module !== index) return '';
         const note = notesByLesson.get(lesson.id);
-        return `<a class="lesson-row ${complete.has(lesson.id) ? 'done' : ''}" href="#course/${lesson.id}"><span class="lesson-num">${complete.has(lesson.id) ? '✓' : fa.format(i + 1)}</span><span class="lesson-title">${note ? expandTerms(note.title, glossary) : lesson.title}</span><span class="lesson-time">${fa.format(note?.minutes ?? lesson.time)} دقیقه</span></a>`;
+        return `<a class="lesson-row ${complete.has(lesson.id) ? 'done' : ''}" href="#course/${lesson.id}"><span class="lesson-num">${complete.has(lesson.id) ? '✓' : numberLabel(i + 1)}</span><span class="lesson-title">${note ? expandTerms(note.title, glossary, locale) : lesson.title}</span><span class="lesson-time">${t('minutes', {time:numberLabel(note?.minutes ?? lesson.time)})}</span></a>`;
       }).join('')
     }</section>`).join('')}</div>`;
 }
@@ -112,41 +145,41 @@ function answerQuiz(container, quiz, answer, renderText) {
   const feedback = container.querySelector('.feedback');
   feedback.classList.toggle('try', !correct);
   feedback.hidden = false;
-  if (correct && renderText) feedback.innerHTML = 'درست است. ' + renderText(quiz[3]);
-  else feedback.textContent = correct ? 'درست است. ' + quiz[3] : 'یک بار دیگر تلاش کن و داده‌های مرتبط با سؤال را مرور کن.';
+  if (correct && renderText) feedback.innerHTML = t('correct') + renderText(quiz[3]);
+  else feedback.textContent = correct ? t('correct') + quiz[3] : t('retry');
   return correct;
 }
 
 function practiceLink(id) {
-  if (id === 'volumes') return button('#lab/volumes','آزمایشگاه حجم‌ها ←');
-  if (id === 'lab') return button('#lab','آزمایشگاه منحنی‌ها ←');
-  if (id === 'cases') return button('#cases','تمرین با کیس‌ها ←');
-  return button('#cases/' + id,'تمرین مرتبط ←');
+  if (id === 'volumes') return button('#lab/volumes',t('volumeLab'));
+  if (id === 'lab') return button('#lab',t('curveLab'));
+  if (id === 'cases') return button('#cases',t('practiceCases'));
+  return button('#cases/' + id,t('relatedPractice'));
 }
 
 function showLesson(lesson) {
   const index = lessons.indexOf(lesson);
   const note = notesByLesson.get(lesson.id);
-  const formatNote = note ? text => expandTerms(text, glossary) : undefined;
+  const formatNote = note ? text => expandTerms(text, glossary, locale) : undefined;
   const lessonQuiz = note?.quiz ?? lesson.quiz;
   const selected = lessonAnswers.get(lesson.id) ?? (complete.has(lesson.id) ? lessonQuiz[2] : undefined);
   const article = note
-    ? renderSessionContent(note, glossary)
+    ? renderSessionContent(note, glossary, 'h2', locale)
     : lesson.sections.map(([title,text]) => `<section><h2>${title}</h2><p>${text}</p></section>`).join('');
-  const noteLink = note ? button('#notebook/' + note.id, 'جزوه این جلسه ←') : '';
+  const noteLink = note ? button('#notebook/' + note.id, t('sessionNotebook')) : '';
   const sources = note
     ? ''
-    : `<div class="section-head"><h2>منابع این درس</h2></div>${sourceList(lesson.refs)}`;
+    : `<div class="section-head"><h2>${t('lessonSources')}</h2></div>${sourceList(lesson.refs)}`;
   const title = note ? formatNote(note.title) : lesson.title;
   const goal = note ? formatNote(note.goal) : lesson.goal;
-  main.innerHTML = head(title, goal, '<a class="back" href="#course">→ همه درس‌ها</a>') + `
+  main.innerHTML = head(title, goal, `<a class="back" href="#course">${t('allLessons')}</a>`) + `
     <div class="read-grid">
       <div class="stack">
         <article class="panel lesson-copy">${article}</article>
-        <section id="lesson-quiz" class="panel quiz"><h2>خودآزمایی</h2>${options(lessonQuiz, selected, formatNote)}</section>
-        <div class="actions">${index > 0 ? button('#course/' + lessons[index-1].id,'→ درس قبلی') : ''}${index < lessons.length-1 ? button('#course/' + lessons[index+1].id,'درس بعدی ←', true) : button('#cases','حل کیس‌های بالینی ←',true)}</div>
+        <section id="lesson-quiz" class="panel quiz"><h2>${t('selfCheck')}</h2>${options(lessonQuiz, selected, formatNote)}</section>
+        <div class="actions">${index > 0 ? button('#course/' + lessons[index-1].id,t('previousLesson')) : ''}${index < lessons.length-1 ? button('#course/' + lessons[index+1].id,t('nextLesson'), true) : button('#cases',t('solveCases'),true)}</div>
       </div>
-      <aside class="panel context"><span class="pill" id="lesson-status">${complete.has(lesson.id) ? 'تکمیل شد' : `درس ${fa.format(index+1)} · ${fa.format(note?.minutes ?? lesson.time)} دقیقه`}</span><h2 style="margin-top:12px">${modules[lesson.module]}</h2><div class="actions">${note ? noteLink : practiceLink(lesson.practice)}</div>${sources}</aside>
+      <aside class="panel context"><span class="pill" id="lesson-status">${complete.has(lesson.id) ? t('completed') : t('lessonTiming', {index:numberLabel(index+1),duration:t('minutes', {time:numberLabel(note?.minutes ?? lesson.time)})})}</span><h2 style="margin-top:12px">${modules[lesson.module]}</h2><div class="actions">${note ? noteLink : practiceLink(lesson.practice)}</div>${sources}</aside>
     </div>`;
   const quiz = main.querySelector('#lesson-quiz');
   if (selected !== undefined) answerQuiz(quiz, lessonQuiz, selected, formatNote);
@@ -157,39 +190,39 @@ function showLesson(lesson) {
     lessonAnswers.set(lesson.id, answer);
     if (answerQuiz(quiz, lessonQuiz, answer, formatNote)) {
       completeLesson(lesson.id);
-      main.querySelector('#lesson-status').textContent = 'تکمیل شد';
+      main.querySelector('#lesson-status').textContent = t('completed');
     }
   });
 }
 
-const labNav = active => `<nav class="lab-nav" aria-label="آزمایشگاه">
-  <a class="btn" href="#lab"${active === 'curves' ? ' aria-current="page"' : ''}>منحنی‌های اسپیرومتری</a>
-  <a class="btn" href="#lab/volumes"${active === 'volumes' ? ' aria-current="page"' : ''}>حجم‌ها و ظرفیت‌ها</a>
+const labNav = active => `<nav class="lab-nav" aria-label="${t('labNav')}">
+  <a class="btn" href="#lab"${active === 'curves' ? ' aria-current="page"' : ''}>${t('spirometryCurves')}</a>
+  <a class="btn" href="#lab/volumes"${active === 'volumes' ? ' aria-current="page"' : ''}>${t('volumes')}</a>
 </nav>`;
 
 function stat(label,value,unit) {
   return `<div class="stat"><dt>${label}</dt><dd>${value} <small>${unit}</small></dd></div>`;
 }
 
-function drawMonitor(target, { before, after, reference, mode, modelLabel = 'منحنی مانور' }, onMode) {
+function drawMonitor(target, { before, after, reference, mode, modelLabel = t('maneuverCurve') }, onMode) {
   const curves = [];
-  if (reference) curves.push({ ...reference,color:colors.reference,label:'نمونه طبیعی مستقل',dashed:true });
-  curves.push({ ...before,color:colors.before,label:'مانور پایه' });
-  if (after) curves.push({ ...after,color:colors.after,label:'پس از دارو' });
+  if (reference) curves.push({ ...reference,color:colors.reference,label:t('normalReference'),dashed:true });
+  curves.push({ ...before,color:colors.before,label:t('baselineManeuver') });
+  if (after) curves.push({ ...after,color:colors.after,label:t('afterDrug') });
   // Values on the monitor continue to describe the base trace when an overlay is active.
   target.innerHTML = `
     <div class="monitor-head"><h2>${modelLabel}</h2>
-      <div class="segmented" aria-label="محورهای نمودار">
-        <button type="button" data-mode="flow" aria-pressed="${mode === 'flow'}">جریان–حجم</button>
-        <button type="button" data-mode="time" aria-pressed="${mode === 'time'}">حجم–زمان</button>
+      <div class="segmented" aria-label="${t('graphAxes')}">
+        <button type="button" data-mode="flow" aria-pressed="${mode === 'flow'}">${t('flowVolume')}</button>
+        <button type="button" data-mode="time" aria-pressed="${mode === 'time'}">${t('volumeTime')}</button>
       </div>
     </div>
-    <canvas class="plot" role="img" aria-label="${mode === 'time' ? 'نمودار حجم–زمان، نقطه ثانیه اول مشخص شده' : 'نمودار جریان–حجم، بازدم بالای محور و دم پایین محور'}"></canvas>
+    <canvas class="plot" role="img" aria-label="${mode === 'time' ? t('volumeTimeLabel') : t('flowVolumeLabel')}"></canvas>
     <div class="legend">${curves.map(curve => `<span><i class="swatch ${curve.dashed ? 'dashed' : ''}" style="--curve:${curve.color}" aria-hidden="true"></i>${curve.label}</span>`).join('')}</div>
-    <dl class="stats" aria-label="مقادیر مانور پایه">${stat('FEV₁',format(before.fev1),'L')}${stat('FVC',format(before.fvc),'L')}${stat('FEV₁/FVC',format(before.ratio),'')}${stat('PEF',format(before.pef,1),'L/s')}</dl>
-    <p class="hint">${before.valid ? 'اعداد بالا مربوط به مانور پایه‌اند. شکل منحنی‌ها با مدل آموزشی تولید شده است.' : 'این مانور دچار خطاست. مقادیر خام برای مقایسه‌اند و تفسیر به بررسی کیفیت هر شاخص نیاز دارد.'}</p>`;
+    <dl class="stats" aria-label="${t('baselineMeasures')}">${stat('FEV₁',format(before.fev1),'L')}${stat('FVC',format(before.fvc),'L')}${stat('FEV₁/FVC',format(before.ratio),'')}${stat('PEF',format(before.pef,1),'L/s')}</dl>
+    <p class="hint">${before.valid ? t('validManeuver') : t('flawedManeuver')}</p>`;
   const canvas = target.querySelector('canvas');
-  const redraw = () => drawChart(canvas, curves, mode);
+  const redraw = () => drawChart(canvas, curves, mode, locale);
   chartCleanup?.();
   const observer = new ResizeObserver(redraw);
   observer.observe(canvas);
@@ -211,7 +244,7 @@ function spirometryTable(item, pair, post) {
     ['FEV₁/FVC','',fev1 / fvc,item.lln[2],null,post && post[0] / post[1]],
   ];
   return `<div class="table-wrap"><table>
-    <thead><tr><th scope="col">شاخص</th><th scope="col">پایه</th>${post ? '<th scope="col">پس از دارو</th>' : ''}<th scope="col">حد پایین (LLN)</th><th scope="col">پیش‌بینی</th></tr></thead>
+    <thead><tr><th scope="col">${t('measure')}</th><th scope="col">${t('baseline')}</th>${post ? `<th scope="col">${t('afterDrug')}</th>` : ''}<th scope="col">${t('lowerLimit')}</th><th scope="col">${t('predicted')}</th></tr></thead>
     <tbody>${rows.map(([name,unit,before,lln,predicted,after]) => `<tr>
       <th scope="row">${num(name)}</th>
       <td>${num(format(before) + ' ' + unit)}</td>
@@ -225,22 +258,26 @@ function spirometryTable(item, pair, post) {
 function responseTable(item) {
   const response = bronchodilator(item.pre,item.post,item.predicted);
   return `<div class="table-wrap"><table>
-    <thead><tr><th scope="col">شاخص</th><th scope="col">تغییر حجم</th><th scope="col">از پیش‌بینی</th><th scope="col">از پایه</th></tr></thead>
+    <thead><tr><th scope="col">${t('measure')}</th><th scope="col">${t('volumeChange')}</th><th scope="col">${t('ofPredicted')}</th><th scope="col">${t('fromBaseline')}</th></tr></thead>
     <tbody>${response.indices.map((row,i) => `<tr><th scope="row">${i === 0 ? 'FEV₁' : 'FVC'}</th><td>${num(format(row.delta * 1000,0) + ' mL')}</td><td>${num(format(row.predictedPercent,1) + '%')}</td><td>${num(format(row.baselinePercent,1) + '%')}</td></tr>`).join('')}</tbody>
-  </table></div><p class="hint">پاسخ ERS/ATS (${num('&gt;10%')} از پیش‌بینی) ${response.ers ? 'دارد' : 'ندارد'} · معیار تغییرپذیری GINA در بالغ (${num('≥12%')} و ${num('≥200 mL')} از پایه) ${response.gina ? 'دارد' : 'ندارد'}.</p>`;
+  </table></div><p class="hint">${t('responseSummary', {
+      predicted:num('&gt;10%'), percent:num('≥12%'), volume:num('≥200 mL'),
+      ers:t(response.ers ? 'criterionMet' : 'criterionMissed'),
+      gina:t(response.gina ? 'criterionMet' : 'criterionMissed'),
+    })}</p>`;
 }
 
 function showLab(item) {
   if (item) Object.assign(lab, { caseId:item.id, artifact:item.artifact ?? 'none', showAfter:Boolean(item.post) });
-  main.innerHTML = head('شبیه‌ساز اسپیرومتری','الگو را انتخاب کن، کیفیت مانور را تغییر بده و رابطه شکل منحنی و مقادیر را ببین.') + labNav('curves') + `
+  main.innerHTML = head(t('simulator'),t('simulatorDescription')) + labNav('curves') + `
     <div class="lab-grid">
       <div class="stack"><section class="monitor"></section><section class="panel context" id="lab-result"></section></div>
       <aside class="panel control">
-        <h2>تنظیم مانور</h2>
-        <label class="field">الگوی نمونه<select id="profile">${cases.map(c => `<option value="${c.id}"${c.id === lab.caseId ? ' selected' : ''}>${c.title}</option>`).join('')}</select></label>
-        <label class="field">کیفیت مانور<select id="artifact">${Object.entries(artifacts).map(([id,label]) => `<option value="${id}"${id === lab.artifact ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
-        <label class="check"><input id="reference" type="checkbox"${lab.reference ? ' checked' : ''}>هم‌پوشانی نمونه طبیعی</label>
-        <label class="check"><input id="post" type="checkbox"${lab.showAfter ? ' checked' : ''}>منحنی پس از دارو</label>
+        <h2>${t('maneuverSettings')}</h2>
+        <label class="field">${t('examplePattern')}<select id="profile">${cases.map(c => `<option value="${c.id}"${c.id === lab.caseId ? ' selected' : ''}>${c.title}</option>`).join('')}</select></label>
+        <label class="field">${t('maneuverQuality')}<select id="artifact">${Object.entries(artifactLabels).map(([id,label]) => `<option value="${id}"${id === lab.artifact ? ' selected' : ''}>${t(label)}</option>`).join('')}</select></label>
+        <label class="check"><input id="reference" type="checkbox"${lab.reference ? ' checked' : ''}>${t('overlayNormal')}</label>
+        <label class="check"><input id="post" type="checkbox"${lab.showAfter ? ' checked' : ''}>${t('afterDrugCurve')}</label>
         <p class="hint" id="post-note"></p>
         <div class="actions" id="lab-case-link"></div>
       </aside>
@@ -261,13 +298,13 @@ function showLab(item) {
     const reference = lab.reference ? maneuver(cases[0].pre, cases[0].shape) : null;
     post.disabled = !selected.post;
     post.checked = Boolean(after);
-    main.querySelector('#post-note').textContent = selected.post ? '' : 'برای این نمونه، داده پس از دارو تعریف نشده است.';
-    main.querySelector('#lab-case-link').innerHTML = button('#cases/' + selected.id, 'تحلیل کیس ←');
+    main.querySelector('#post-note').textContent = selected.post ? '' : t('noPostData');
+    main.querySelector('#lab-case-link').innerHTML = button('#cases/' + selected.id, t('analyzeCase'));
     const canCompare = after && before.valid;
     main.querySelector('#lab-result').innerHTML = `<h2>${selected.title}</h2>` +
       spirometryTable(selected,[before.fev1,before.fvc],after ? selected.post : null) +
       (canCompare ? responseTable(selected) : '') +
-      (!before.valid ? '<p class="hint">محاسبه پاسخ دارویی فقط برای مانور پایه کامل انجام می‌شود.</p>' : '');
+      (!before.valid ? `<p class="hint">${t('compareOnlyComplete')}</p>` : '');
     drawMonitor(monitor, { before, after, reference, mode:lab.mode }, mode => {
       lab.mode = mode;
       display();
@@ -287,22 +324,22 @@ function showLab(item) {
 }
 
 function showVolumes() {
-  main.innerHTML = head('حجم‌ها و ظرفیت‌های ریه','هر حجم را تغییر بده و تغییر ظرفیت‌های وابسته را دنبال کن.') + labNav('volumes') + `
+  main.innerHTML = head(t('lungVolumeTitle'),t('lungVolumeDescription')) + labNav('volumes') + `
     <div class="lab-grid">
       <section class="panel volume-panel context">
-        <h2>ترکیب حجم‌های ریه</h2>
-        <div class="volume-plot-wrap"><canvas class="volume-plot" role="img" aria-label="تنفس آرام، سپس دم تا TLC و بازدم تا RV"></canvas></div>
+        <h2>${t('volumeComponents')}</h2>
+        <div class="volume-plot-wrap"><canvas class="volume-plot" role="img" aria-label="${t('breathingGraph')}"></canvas></div>
         <dl class="stats" id="volume-stats"></dl>
-        <ul><li>ظرفیت دمی ${num('IC = IRV + TV')}</li><li>ظرفیت باقیمانده عملکردی ${num('FRC = ERV + RV')}</li><li>ظرفیت حیاتی ${num('VC = IRV + TV + ERV')}</li><li>ظرفیت کل ریه ${num('TLC = VC + RV')}</li></ul>
-        <p>RV و ظرفیت‌های حاوی آن در اسپیرومتری ساده مستقیماً اندازه‌گیری نمی‌شوند. در PFT کامل می‌توان با اندازه‌گیری حجم‌های استاتیک آن‌ها را تعیین کرد.</p>
+        <ul><li>${t('inspiratoryCapacity')} ${num('IC = IRV + TV')}</li><li>${t('functionalResidualCapacity')} ${num('FRC = ERV + RV')}</li><li>${t('vitalCapacity')} ${num('VC = IRV + TV + ERV')}</li><li>${t('totalLungCapacity')} ${num('TLC = VC + RV')}</li></ul>
+        <p>${t('staticVolumes')}</p>
       </section>
-      <aside class="panel control"><h2>حجم‌های نمونه</h2><div class="volume-fields">${volumeFields.map(([key,label,name]) =>
-        `<label>${name} (${label}) <output for="v-${key}"></output><input type="range" id="v-${key}" data-volume="${key}" min="0.2" max="${key === 'tv' ? '1.2' : '4.5'}" step="0.1" value="${volumes[key]}"></label>`
-      ).join('')}</div><div class="actions"><button class="btn" type="button" id="reset-volumes">بازنشانی</button>${button('#course/volumes','درس حجم‌ها ←')}</div></aside>
+      <aside class="panel control"><h2>${t('sampleVolumes')}</h2><div class="volume-fields">${volumeFields.map(([key,label,name]) =>
+        `<label>${t(name)} (${label}) <output for="v-${key}"></output><input type="range" id="v-${key}" data-volume="${key}" min="0.2" max="${key === 'tv' ? '1.2' : '4.5'}" step="0.1" value="${volumes[key]}"></label>`
+      ).join('')}</div><div class="actions"><button class="btn" type="button" id="reset-volumes">${t('reset')}</button>${button('#course/volumes',t('volumeLesson'))}</div></aside>
     </div>`;
   const inputs = [...main.querySelectorAll('[data-volume]')];
   const canvas = main.querySelector('.volume-plot');
-  const redraw = () => drawBreathingChart(canvas, volumes);
+  const redraw = () => drawBreathingChart(canvas, volumes, locale);
   const observer = new ResizeObserver(redraw);
   observer.observe(canvas);
   chartCleanup = () => observer.disconnect();
@@ -329,18 +366,18 @@ function showVolumes() {
   refresh();
 }
 
-const caseLabels = [
+const faCaseLabels = [
   'ارزیابی پایه', 'خس‌خس متغیر', 'سیگار و تنگی نفس پیشرونده', 'سرفه خشک و کراکل', 'تفسیر دوباره FVC پایین',
   'خس‌خس همراه کراکل', 'مانورهای ناهماهنگ', 'استریدور فعالیتی', 'تنگی نفس خفیف در سالمندی',
   'افت اشباع در راه رفتن', 'ارتوپنه و سرفه ضعیف', 'تنگی نفس فعالیتی و اضافه‌وزن',
 ];
-const caseName = item => caseLabels[cases.indexOf(item)];
+const caseName = item => (locale === 'en' ? enCaseLabels : faCaseLabels)[cases.indexOf(item)];
 
 function caseList() {
-  main.innerHTML = head('کیس‌های بالینی','شرح‌حال و منحنی را بخوان و در سه مرحله از الگو به تصمیم بالینی برس.') + `
+  main.innerHTML = head(t('clinicalCases'),t('clinicalCasesDescription')) + `
     <div class="cards">${cases.map((item,i) => `<a class="card" href="#cases/${item.id}">
-      <span class="eyebrow">کیس ${fa.format(i+1)} · ${item.ages}</span>
-      <h3>${caseName(item)}</h3><p>${item.story}</p><span class="card-link">${caseProgress.get(item.id)?.step === stages.length ? 'مرور پاسخ' : 'حل کیس'} ←</span>
+      <span class="eyebrow">${t('caseNumber', {index:numberLabel(i+1),age:item.ages})}</span>
+      <h3>${caseName(item)}</h3><p>${item.story}</p><span class="card-link">${t(caseProgress.get(item.id)?.step === stages.length ? 'reviewAnswer' : 'solveCase')}</span>
     </a>`).join('')}</div>`;
 }
 
@@ -349,20 +386,20 @@ function showCase(item) {
   caseProgress.set(item.id,state);
   const before = maneuver(item.pre,item.shape,item.artifact);
   const after = item.post ? maneuver(item.post,item.postShape ?? item.shape) : null;
-  main.innerHTML = head(caseName(item), item.ages + ' · کیس فرضی', '<a class="back" href="#cases">→ همه کیس‌ها</a>') + `
+  main.innerHTML = head(caseName(item), item.ages + ' · ' + t('fictionalCase'), `<a class="back" href="#cases">${t('backToCases')}</a>`) + `
     <div class="read-grid">
       <div class="stack">
-        <section class="panel context"><h2>شرح حال</h2><p>${item.story}</p></section>
+        <section class="panel context"><h2>${t('history')}</h2><p>${item.story}</p></section>
         <section class="monitor"></section>
         <section class="panel context">
-          <h2>گزارش آزمون</h2>
+          <h2>${t('testReport')}</h2>
           ${spirometryTable(item,[before.fev1,before.fvc],item.post)}
           <div id="case-extra"></div>
         </section>
       </div>
       <div class="stack">
         <section class="panel quiz" id="case-quiz"></section>
-        <section class="panel context"><h2>منابع کیس</h2>${sourceList(item.refs)}</section>
+        <section class="panel context"><h2>${t('caseSources')}</h2>${sourceList(item.refs)}</section>
       </div>
     </div>`;
 
@@ -377,21 +414,21 @@ function showCase(item) {
     const finished = state.step === stages.length;
     extra.innerHTML = state.step > 0 ? `<ul class="case-extra">${item.extra.map(([label,value,hint]) =>
       `<li><strong>${label}</strong> · <bdi>${value}</bdi> · <bdi>${hint}</bdi></li>`
-    ).join('')}</ul>` : '<p class="hint">داده‌های تکمیلی در مرحله بعد نمایش داده می‌شوند.</p>';
+    ).join('')}</ul>` : `<p class="hint">${t('supplementalData')}</p>`;
     if (finished) {
       const next = cases[cases.indexOf(item)+1];
       quiz.innerHTML = `<span class="pill">${item.tag}</span><h2>${item.title}</h2><p>${item.assessment}</p>
         ${after ? responseTable(item) : ''}<div class="actions">
-        <button class="btn" type="button" data-restart>حل دوباره</button>
-        ${button('#lab/' + item.id,'تمرین با منحنی')}${button(next ? '#cases/' + next.id : '#cases',next ? 'کیس بعدی ←' : 'همه کیس‌ها',true)}</div>`;
+        <button class="btn" type="button" data-restart>${t('restartCase')}</button>
+        ${button('#lab/' + item.id,t('practiceCurve'))}${button(next ? '#cases/' + next.id : '#cases',next ? t('nextCase') : t('allCases'),true)}</div>`;
       return;
     }
 
     quiz.innerHTML = `<ol class="steps">${stages.map((label,index) =>
-      `<li${index === state.step ? ' aria-current="step"' : ''}>${index < state.step ? '✓ ' : ''}${label}</li>`
-    ).join('')}</ol><h2 tabindex="-1">مرحله ${fa.format(state.step + 1)}</h2>
+      `<li${index === state.step ? ' aria-current="step"' : ''}>${index < state.step ? '✓ ' : ''}${t(label)}</li>`
+    ).join('')}</ol><h2 tabindex="-1">${t('caseStage', {index:numberLabel(state.step+1)})}</h2>
     ${options(item.questions[state.step],state.answer)}
-    <div class="actions"><button class="btn primary" type="button" data-next hidden>${state.step === stages.length - 1 ? 'دیدن جمع‌بندی' : 'مرحله بعد ←'}</button></div>`;
+    <div class="actions"><button class="btn primary" type="button" data-next hidden>${state.step === stages.length - 1 ? t('caseSummary') : t('nextStage')}</button></div>`;
     if (state.answer !== undefined) showAnswer(state.answer);
   }
   function showAnswer(answer) {
@@ -420,14 +457,15 @@ function showCase(item) {
   updateCase();
 }
 
-function route(moveFocus = false) {
-  if (location.hash === '#main') {
+function route(moveFocus = false, preserveState = false) {
+  if (location.hash === '#main' && !preserveState) {
     main.focus();
     return;
   }
   chartCleanup?.();
   chartCleanup = undefined;
-  const [page, id] = location.hash.slice(1).split('/');
+  if (location.hash !== '#main') lastRoute = location.hash;
+  const [page, id] = lastRoute.slice(1).split('/');
   for (const link of document.querySelectorAll('[data-nav]')) {
     if (link.dataset.nav === (page || 'home')) link.setAttribute('aria-current','page');
     else link.removeAttribute('aria-current');
@@ -436,12 +474,12 @@ function route(moveFocus = false) {
   const item = cases.find(entry => entry.id === id);
   switch (page) {
     case 'course': lesson ? showLesson(lesson) : course(); break;
-    case 'lab': id === 'volumes' ? showVolumes() : showLab(item); break;
+    case 'lab': id === 'volumes' ? showVolumes() : showLab(preserveState ? undefined : item); break;
     case 'cases': item ? showCase(item) : caseList(); break;
     case 'notebook': {
-      renderNotebook(main, sessions, glossary, id);
+      renderNotebook(main, sessions, glossary, id, locale);
       const session = sessions.find(entry => entry.id === id);
-      if (session) {
+      if (session && !preserveState) {
         const chapter = document.getElementById('notebook-session-' + session.id);
         chapter.focus({ preventScroll:true });
         chapter.scrollIntoView({ block:'start' });
@@ -449,7 +487,7 @@ function route(moveFocus = false) {
       }
       break;
     }
-    case 'sources': main.innerHTML = head('منابع دوره','استانداردهای فنی و راهنماهای بالینی به‌کاررفته در درس‌ها و کیس‌ها.') + '<section class="panel">' + sourceList(Object.keys(references)) + '</section>'; break;
+    case 'sources': main.innerHTML = head(t('sources'),t('sourcesDescription')) + '<section class="panel">' + sourceList(Object.keys(references)) + '</section>'; break;
     default: home();
   }
   if (moveFocus) {
@@ -458,5 +496,16 @@ function route(moveFocus = false) {
   }
 }
 
+languageToggle.addEventListener('click', () => {
+  const openDetails = [...main.querySelectorAll('details')].map(details => details.open);
+  locale = locale === 'en' ? 'fa' : 'en';
+  try { localStorage.setItem(languageKey, locale); }
+  catch { /* Apply the language for this session even when storage is unavailable. */ }
+  applyLocale();
+  route(false, true);
+  main.querySelectorAll('details').forEach((details, index) => {
+    details.open = openDetails[index] === true;
+  });
+});
 window.addEventListener('hashchange', () => route(true));
 route();

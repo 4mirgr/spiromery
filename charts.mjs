@@ -1,6 +1,9 @@
+import { createTranslator } from './locale.mjs';
+
 export const colors = { before:'#8fe2ab', after:'#f6cc84', reference:'#8cb5be' };
 
-export function drawChart(canvas, curves, mode) {
+export function drawChart(canvas, curves, mode, locale) {
+  const t = createTranslator(locale);
   const { width, height } = canvas.getBoundingClientRect();
   if (width === 0 || height === 0) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -44,9 +47,9 @@ export function drawChart(canvas, curves, mode) {
     ctx.fillText(y, left - 7, py(y) + 4);
   }
   ctx.textAlign = 'left';
-  ctx.fillText(volumeTime ? 'حجم (L)' : 'جریان (L/s)', left, 13);
+  ctx.fillText(t(volumeTime ? 'volumeAxis' : 'flowAxis'), left, 13);
   ctx.textAlign = 'center';
-  ctx.fillText(volumeTime ? 'زمان بازدم (s)' : 'حجم بازدمی (L)', (left + right) / 2, height - 5);
+  ctx.fillText(t(volumeTime ? 'expiredTimeAxis' : 'expiredVolumeAxis'), (left + right) / 2, height - 5);
 
   if (volumeTime) {
     ctx.setLineDash([3, 4]);
@@ -81,7 +84,8 @@ export function drawChart(canvas, curves, mode) {
   }
 }
 
-export function drawBreathingChart(canvas, { rv, erv, tv, irv }) {
+export function drawBreathingChart(canvas, { rv, erv, tv, irv }, locale) {
+  const t = createTranslator(locale);
   const { width, height } = canvas.getBoundingClientRect();
   if (width === 0 || height === 0) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -123,7 +127,7 @@ export function drawBreathingChart(canvas, { rv, erv, tv, irv }) {
     ctx.fillText(name, right + 8, y + 4);
   }
   ctx.textAlign = 'center';
-  ctx.fillText('زمان (s)', (left + right) / 2, height - 4);
+  ctx.fillText(t('timeAxis'), (left + right) / 2, height - 4);
   for (let time = 0; time <= 10; time += 2) ctx.fillText(time, px(time), bottom + 15);
   ctx.fillText('L', 13, 14);
   ctx.textAlign = 'right';
