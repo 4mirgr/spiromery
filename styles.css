@@ -29,7 +29,7 @@ main:focus{outline:none}
 .site-footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);color:var(--muted);padding-block:19px 24px;font-size:.83rem;flex-wrap:wrap}
 .site-footer a{font-weight:700}
 .hero{position:relative;isolation:isolate;overflow:hidden;min-height:330px;display:flex;align-items:center;border-radius:25px;background:#062a29;color:#fff;box-shadow:0 12px 32px #1a473115}
-.hero-art{position:absolute;z-index:-2;inset:0 auto 0 0;width:59%;height:100%;object-fit:contain;object-position:left center;filter:brightness(.88) saturate(.8)}
+.hero-art{position:absolute;z-index:-2;inset:0 auto 0 0;width:auto;max-width:59%;height:100%;object-fit:contain;object-position:left center;filter:brightness(.88) saturate(.8);mask-image:linear-gradient(to right,#000 73%,transparent)}
 .hero::after{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(270deg,#0c302c 32%,#0b2f2be8 47%,#082a2826 69%,transparent)}
 .hero-copy{padding:38px 44px;width:min(650px,69%)}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--green);font-weight:700}
@@ -129,6 +129,7 @@ input[type=checkbox]{width:17px;height:17px;margin-top:5px;flex:none}
 table{width:100%;border-collapse:collapse;font-size:.87rem}
 td,th{text-align:start;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 thead{background:#f0f5ed}
+.table-wrap thead th{white-space:normal;line-height:1.4}
 tr:last-child td{border-bottom:0}
 .case-layout{margin-top:15px}
 .case-title{margin:0 0 8px;font-size:1.25rem}
@@ -147,7 +148,7 @@ kbd,bdi[dir=ltr],.numeric{font-variant-numeric:tabular-nums}
 @media(max-width:900px){
   .shell,.header-inner{width:calc(100% - 36px)}
   .hero-copy{padding:28px}
-  .hero-art{width:64%}
+  .hero-art{max-width:64%}
   .cards{gap:10px}
   .read-grid,.lab-grid{grid-template-columns:minmax(0,1fr) minmax(205px,246px);gap:12px}
   .panel{padding:16px}
@@ -164,7 +165,7 @@ kbd,bdi[dir=ltr],.numeric{font-variant-numeric:tabular-nums}
   .hero-copy{width:100%;padding:21px 16px}
   .hero h1{font-size:clamp(1.7rem,7vw,2.5rem)}
   .hero p{font-size:.87rem;max-width:33ch}
-  .hero-art{width:85%;object-fit:cover;opacity:.66}
+  .hero-art{width:85%;max-width:none;object-fit:cover;opacity:.66}
   .hero::after{background:linear-gradient(270deg,#0d302c 8%,#0b2f2bf0 31%,#0b2f2b9c 69%,#092e2b33)}
   .hero .actions{gap:6px;margin-top:16px}
   .meta-strip{margin-top:10px;padding-block:10px}
@@ -178,6 +179,7 @@ kbd,bdi[dir=ltr],.numeric{font-variant-numeric:tabular-nums}
   .panel{padding:14px}
   .lab-grid .control{grid-row:1}
   .monitor{padding:12px}
+  td,th{padding-inline:5px;font-size:.79rem}
   .stats{gap:4px}
   .stat{padding:6px 4px}
   .stat dt{font-size:.64rem}

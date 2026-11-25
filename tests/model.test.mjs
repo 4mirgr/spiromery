@@ -24,6 +24,10 @@ test('representative curves agree with the fictional report and preserve physica
       close(model.inspiration.at(-1).volume,0);
       assert.ok(model.samples.every((point,i,all) => i === 0 || point.volume >= all[i-1].volume));
       assert.ok(model.inspiration.every(point => point.flow <= 0));
+      if (shape === 'obstructive') {
+        const falling = model.samples.slice(model.samples.findIndex(point => point.flow === model.pef));
+        assert.ok(falling.every((point,i) => i === 0 || point.flow <= falling[i-1].flow));
+      }
       assert.ok(model.valid && model.pef > 0 && !model.endedEarly);
     }
   }

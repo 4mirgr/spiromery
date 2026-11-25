@@ -24,11 +24,17 @@ function lungEmptying(shape, ratio) {
   }
 
   const duration = durationByShape[shape];
-  const slow = 2;
-  const fast = duration * 4.5;
-  const cdf = (time, b) => {
-    const x = Math.min(1, Math.max(0, time / duration));
-    return 1 - (1 - x) ** b * (1 + b * x);
+  const peakTime = 0.13;
+  const tailDuration = duration - peakTime;
+  const slow = 1.4;
+  const fast = duration * 2.5;
+  // Integrate two expiratory components with a common peak and different decay rates.
+  const cdf = (time, exponent) => {
+    const rampArea = peakTime / 2;
+    const tailArea = tailDuration / (exponent + 1);
+    if (time < peakTime) return time ** 2 / (2 * peakTime * (rampArea + tailArea));
+    const remaining = Math.max(0, (duration - time) / tailDuration);
+    return 1 - tailArea * remaining ** (exponent + 1) / (rampArea + tailArea);
   };
   const fastShare = (ratio - cdf(1, slow)) / (cdf(1, fast) - cdf(1, slow));
   return {
