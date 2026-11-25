@@ -1,12 +1,11 @@
 const messages = {
   skip: ['رفتن به محتوا', 'Skip to content'],
-  appTitle: ['آزمایشگاه اسپیرومتری', 'Spirometry Lab'],
-  pageTitle: ['آزمایشگاه اسپیرومتری | دکتر گرامی', 'Spirometry Lab | Dr. Gerami'],
+  appTitle: ['اسپیرومتری', 'Spiromertry Lab'],
   pageDescription: [
     'آموزش اسپیرومتری برای رزیدنت طب داخلی، با شبیه‌ساز منحنی‌ها، حجم‌های ریه و کیس‌های تعاملی.',
     'Spirometry training for internal medicine residents, with a curve simulator, lung volumes and interactive cases.',
   ],
-  brandHome: ['صفحه اصلی آزمایشگاه اسپیرومتری', 'Spirometry Lab home'],
+  brandHome: ['صفحه اصلی {brand}', '{brand} home'],
   navLabel: ['مسیرهای آموزش', 'Learning sections'],
   navHome: ['خانه', 'Home'],
   navCourse: ['دوره آموزشی', 'Course'],
@@ -16,7 +15,7 @@ const messages = {
   doctor: ['دکتر گرامی', 'Dr. Gerami'],
   languageCode: ['EN', 'FA'],
   languageAction: ['تغییر زبان به انگلیسی', 'Switch language to Persian'],
-  footerTitle: ['آزمایشگاه اسپیرومتری · آموزش طب داخلی', 'Spirometry Lab · Internal medicine education'],
+  footerTitle: ['{brand} · آموزش طب داخلی', '{brand} · Internal medicine education'],
   fictionalData: ['داده‌های شبیه‌سازی و کیس‌ها فرضی هستند.', 'Simulation data and cases are fictional.'],
   sources: ['منابع دوره', 'Course references'],
   sourcesDescription: [

@@ -47,10 +47,11 @@ function applyLocale() {
   notesByLesson = new Map(sessions.map(session => [session.lessonId, session]));
   document.documentElement.lang = locale;
   document.documentElement.dir = english ? 'ltr' : 'rtl';
-  document.title = t('pageTitle');
+  const name = { brand: t('appTitle') };
+  document.title = name.brand;
   document.querySelector('meta[name="description"]').content = t('pageDescription');
-  for (const node of document.querySelectorAll('[data-message]')) node.textContent = t(node.dataset.message);
-  for (const node of document.querySelectorAll('[data-label-message]')) node.setAttribute('aria-label', t(node.dataset.labelMessage));
+  for (const node of document.querySelectorAll('[data-message]')) node.textContent = t(node.dataset.message, name);
+  for (const node of document.querySelectorAll('[data-label-message]')) node.setAttribute('aria-label', t(node.dataset.labelMessage, name));
   languageToggle.title = t('languageAction');
   languageToggle.hidden = false;
 }

@@ -1,3 +1,5 @@
+import { createTranslator } from './locale.mjs';
+
 const htmlEntities = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
 
 const copyByLocale = {
@@ -9,7 +11,7 @@ const copyByLocale = {
     answer: 'پاسخ تشریحی',
     references: 'منابع این جلسه',
     course: 'درس تعاملی و خودآزمایی ←',
-    series: 'آزمایشگاه اسپیرومتری <bdi lang="en" dir="ltr">(Spirometry Lab)</bdi>',
+    printDocument: 'جزوه',
     title: 'جزوه اسپیرومتری',
     subtitle: 'جلسه‌های آموزش، جدول‌های مرور و خودآزمایی برای رزیدنت طب داخلی',
     print: 'چاپ یا ذخیره نسخه الکترونیکی',
@@ -27,7 +29,7 @@ const copyByLocale = {
     answer: 'Worked answer',
     references: 'Session references',
     course: 'Interactive lesson and quiz →',
-    series: 'Spirometry Lab',
+    printDocument: 'Notebook',
     title: 'Spirometry Notebook',
     subtitle: 'Lessons, reference tables, and practice questions for internal medicine residents',
     print: 'Print or save as PDF',
@@ -127,6 +129,7 @@ function renderContent(session, glossary, heading, locale, courseLink) {
 
 export function renderNotebook(target, sessions, glossary, requestedId, locale = 'fa') {
   const english = locale === 'en';
+  const brand = createTranslator(locale)('appTitle');
   const copy = english ? copyByLocale.en : copyByLocale.fa;
   const number = new Intl.NumberFormat(english ? 'en-US' : 'fa-IR');
   const show = value => expandTerms(value, glossary, locale);
@@ -136,7 +139,7 @@ export function renderNotebook(target, sessions, glossary, requestedId, locale =
     <div class="notebook" lang="${english ? 'en' : 'fa'}" dir="${english ? 'ltr' : 'rtl'}">
       <header class="notebook-cover">
         <div class="notebook-cover-copy">
-          <p class="notebook-series">${copy.series}</p>
+          <p class="notebook-series">${escapeHtml(brand)}</p>
           <h1>${copy.title}</h1>
           <p>${copy.subtitle}</p>
           <button class="btn notebook-print" type="button" data-print-notebook>${copy.print}</button>
@@ -174,7 +177,7 @@ export function renderNotebook(target, sessions, glossary, requestedId, locale =
 
   target.querySelector('[data-print-notebook]').addEventListener('click', () => {
     const previousTitle = document.title;
-    document.title = copy.title;
+    document.title = `${brand} · ${copy.printDocument}`;
     try {
       window.print();
     } finally {
