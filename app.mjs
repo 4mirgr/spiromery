@@ -2,6 +2,8 @@ import { cases } from './cases.mjs';
 import { lessons, modules, references } from './curriculum.mjs';
 import { artifacts, bronchodilator, lungVolumes, maneuver } from './model.mjs';
 import { colors, drawChart, drawBreathingChart } from './charts.mjs';
+import { glossary, sessions } from './lesson-notes.mjs';
+import { expandTerms, renderNotebook, renderSessionContent } from './notebook.mjs';
 
 const main = document.querySelector('main');
 const localKey = 'gerami.spirometry.learn.v1';
@@ -11,6 +13,7 @@ const format = (value, digits = 2) => value.toFixed(digits);
 const num = value => `<bdi dir="ltr">${value}</bdi>`;
 const lessonAnswers = new Map();
 const caseProgress = new Map();
+const notesByLesson = new Map(sessions.map(session => [session.lessonId, session]));
 const stages = ['خواندن تست', 'استدلال تشخیصی', 'تصمیم بالینی'];
 const volumeFields = [
   ['irv','IRV','ذخیره دمی',2.8], ['tv','TV','حجم جاری',0.5],
@@ -87,19 +90,21 @@ function course() {
   main.innerHTML = head('دوره آموزش اسپیرومتری','درس‌ها به ترتیب از فیزیولوژی پایه به حل مسئله بالینی می‌رسند.') + `
     <div class="panel progress-panel"><strong>${fa.format(complete.size)} از ${fa.format(lessons.length)} درس</strong><progress value="${complete.size}" max="${lessons.length}" aria-label="درس‌های تکمیل‌شده"></progress></div>
     <div class="stack">${modules.map((title,index) => `<section class="panel module-panel"><h2>${title}</h2>${
-      lessons.map((lesson, i) => lesson.module === index
-        ? `<a class="lesson-row ${complete.has(lesson.id) ? 'done' : ''}" href="#course/${lesson.id}"><span class="lesson-num">${complete.has(lesson.id) ? '✓' : fa.format(i + 1)}</span><span class="lesson-title">${lesson.title}</span><span class="lesson-time">${fa.format(lesson.time)} دقیقه</span></a>`
-        : '').join('')
+      lessons.map((lesson, i) => {
+        if (lesson.module !== index) return '';
+        const note = notesByLesson.get(lesson.id);
+        return `<a class="lesson-row ${complete.has(lesson.id) ? 'done' : ''}" href="#course/${lesson.id}"><span class="lesson-num">${complete.has(lesson.id) ? '✓' : fa.format(i + 1)}</span><span class="lesson-title">${note ? expandTerms(note.title, glossary) : lesson.title}</span><span class="lesson-time">${fa.format(note?.minutes ?? lesson.time)} دقیقه</span></a>`;
+      }).join('')
     }</section>`).join('')}</div>`;
 }
 
-function options(quiz, selected) {
-  return `<p class="prompt">${quiz[0]}</p><div class="options">${quiz[1].map((choice,index) =>
-    `<button type="button" class="option" data-answer="${index}" aria-pressed="${index === selected}">${choice}</button>`
+function options(quiz, selected, renderText = text => text) {
+  return `<p class="prompt">${renderText(quiz[0])}</p><div class="options">${quiz[1].map((choice,index) =>
+    `<button type="button" class="option" data-answer="${index}" aria-pressed="${index === selected}">${renderText(choice)}</button>`
   ).join('')}</div><div class="feedback" role="status" hidden></div>`;
 }
 
-function answerQuiz(container, quiz, answer) {
+function answerQuiz(container, quiz, answer, renderText) {
   const correct = quiz[2] === answer;
   for (const option of container.querySelectorAll('[data-answer]')) {
     option.setAttribute('aria-pressed', String(Number(option.dataset.answer) === answer));
@@ -107,7 +112,8 @@ function answerQuiz(container, quiz, answer) {
   const feedback = container.querySelector('.feedback');
   feedback.classList.toggle('try', !correct);
   feedback.hidden = false;
-  feedback.textContent = correct ? 'درست است. ' + quiz[3] : 'یک بار دیگر تلاش کن و داده‌های مرتبط با سؤال را مرور کن.';
+  if (correct && renderText) feedback.innerHTML = 'درست است. ' + renderText(quiz[3]);
+  else feedback.textContent = correct ? 'درست است. ' + quiz[3] : 'یک بار دیگر تلاش کن و داده‌های مرتبط با سؤال را مرور کن.';
   return correct;
 }
 
@@ -120,26 +126,38 @@ function practiceLink(id) {
 
 function showLesson(lesson) {
   const index = lessons.indexOf(lesson);
-  const selected = lessonAnswers.get(lesson.id) ?? (complete.has(lesson.id) ? lesson.quiz[2] : undefined);
-  main.innerHTML = head(lesson.title, lesson.goal, '<a class="back" href="#course">→ همه درس‌ها</a>') + `
+  const note = notesByLesson.get(lesson.id);
+  const formatNote = note ? text => expandTerms(text, glossary) : undefined;
+  const lessonQuiz = note?.quiz ?? lesson.quiz;
+  const selected = lessonAnswers.get(lesson.id) ?? (complete.has(lesson.id) ? lessonQuiz[2] : undefined);
+  const article = note
+    ? renderSessionContent(note, glossary)
+    : lesson.sections.map(([title,text]) => `<section><h2>${title}</h2><p>${text}</p></section>`).join('');
+  const noteLink = note ? button('#notebook/' + note.id, 'جزوه این جلسه ←') : '';
+  const sources = note
+    ? ''
+    : `<div class="section-head"><h2>منابع این درس</h2></div>${sourceList(lesson.refs)}`;
+  const title = note ? formatNote(note.title) : lesson.title;
+  const goal = note ? formatNote(note.goal) : lesson.goal;
+  main.innerHTML = head(title, goal, '<a class="back" href="#course">→ همه درس‌ها</a>') + `
     <div class="read-grid">
       <div class="stack">
-        <article class="panel lesson-copy">${lesson.sections.map(([title,text]) => `<section><h2>${title}</h2><p>${text}</p></section>`).join('')}</article>
-        <section id="lesson-quiz" class="panel quiz"><h2>خودآزمایی</h2>${options(lesson.quiz, selected)}</section>
+        <article class="panel lesson-copy">${article}</article>
+        <section id="lesson-quiz" class="panel quiz"><h2>خودآزمایی</h2>${options(lessonQuiz, selected, formatNote)}</section>
         <div class="actions">${index > 0 ? button('#course/' + lessons[index-1].id,'→ درس قبلی') : ''}${index < lessons.length-1 ? button('#course/' + lessons[index+1].id,'درس بعدی ←', true) : button('#cases','حل کیس‌های بالینی ←',true)}</div>
       </div>
-      <aside class="panel context"><span class="pill" id="lesson-status">${complete.has(lesson.id) ? 'تکمیل شد' : `درس ${fa.format(index+1)} · ${fa.format(lesson.time)} دقیقه`}</span><h2 style="margin-top:12px">${modules[lesson.module]}</h2><div class="actions">${practiceLink(lesson.practice)}</div><div class="section-head"><h2>منابع این درس</h2></div>${sourceList(lesson.refs)}</aside>
+      <aside class="panel context"><span class="pill" id="lesson-status">${complete.has(lesson.id) ? 'تکمیل شد' : `درس ${fa.format(index+1)} · ${fa.format(note?.minutes ?? lesson.time)} دقیقه`}</span><h2 style="margin-top:12px">${modules[lesson.module]}</h2><div class="actions">${note ? noteLink : practiceLink(lesson.practice)}</div>${sources}</aside>
     </div>`;
-  const quiz = document.querySelector('#lesson-quiz');
-  if (selected !== undefined) answerQuiz(quiz, lesson.quiz, selected);
+  const quiz = main.querySelector('#lesson-quiz');
+  if (selected !== undefined) answerQuiz(quiz, lessonQuiz, selected, formatNote);
   quiz.addEventListener('click', event => {
     const choice = event.target.closest('[data-answer]');
     if (!choice) return;
     const answer = Number(choice.dataset.answer);
     lessonAnswers.set(lesson.id, answer);
-    if (answerQuiz(quiz, lesson.quiz, answer)) {
+    if (answerQuiz(quiz, lessonQuiz, answer, formatNote)) {
       completeLesson(lesson.id);
-      document.querySelector('#lesson-status').textContent = 'تکمیل شد';
+      main.querySelector('#lesson-status').textContent = 'تکمیل شد';
     }
   });
 }
@@ -420,6 +438,17 @@ function route(moveFocus = false) {
     case 'course': lesson ? showLesson(lesson) : course(); break;
     case 'lab': id === 'volumes' ? showVolumes() : showLab(item); break;
     case 'cases': item ? showCase(item) : caseList(); break;
+    case 'notebook': {
+      renderNotebook(main, sessions, glossary, id);
+      const session = sessions.find(entry => entry.id === id);
+      if (session) {
+        const chapter = document.getElementById('notebook-session-' + session.id);
+        chapter.focus({ preventScroll:true });
+        chapter.scrollIntoView({ block:'start' });
+        return;
+      }
+      break;
+    }
     case 'sources': main.innerHTML = head('منابع دوره','استانداردهای فنی و راهنماهای بالینی به‌کاررفته در درس‌ها و کیس‌ها.') + '<section class="panel">' + sourceList(Object.keys(references)) + '</section>'; break;
     default: home();
   }

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { artifacts, bronchodilator, lungVolumes, maneuver } from '../model.mjs';
 import { cases } from '../cases.mjs';
 import { lessons, modules, references } from '../curriculum.mjs';
+import { glossary, sessions } from '../lesson-notes.mjs';
+import { expandTerms, renderSessionContent } from '../notebook.mjs';
 
 function close(actual, expected) {
   assert.ok(Math.abs(actual - expected) < 1e-8, `Expected ${actual} to equal ${expected}`);
@@ -73,18 +75,48 @@ test('lung capacities use the correct subdivisions', () => {
 });
 
 test('the course and staged cases have complete references, options and practice links', () => {
+  const notesByLesson = new Map(sessions.map(session => [session.lessonId, session]));
   for (const list of [lessons,cases]) {
     assert.equal(new Set(list.map(item => item.id)).size,list.length);
     for (const item of list) {
-      assert.ok(item.refs.length && item.refs.every(key => key in references));
-      for (const [question,options,answer,feedback] of item.questions ?? [item.quiz]) {
+      const note = notesByLesson.get(item.id);
+      if (!note) assert.ok(item.refs.length && item.refs.every(key => key in references));
+      for (const [question,options,answer,feedback] of item.questions ?? [note?.quiz ?? item.quiz]) {
         assert.ok(question && options.length >= 2 && options[answer] && feedback);
       }
     }
   }
   for (const lesson of lessons) {
-    assert.ok(modules[lesson.module] && lesson.sections.length >= 3);
+    const content = notesByLesson.get(lesson.id) ?? lesson;
+    assert.ok(modules[lesson.module] && content.sections.length >= 3);
     assert.ok(['volumes','lab','cases'].includes(lesson.practice) || cases.some(item => item.id === lesson.practice));
   }
   for (const item of cases) assert.equal(item.questions.length,3);
+});
+
+test('notebook sessions contain balanced tables, complete term expansions and course links', () => {
+  assert.ok(sessions.length > 0);
+  assert.equal(new Set(sessions.map(session => session.id)).size,sessions.length);
+  assert.equal(new Set(sessions.map(session => session.lessonId)).size,sessions.length);
+  for (const session of sessions) {
+    assert.match(session.id,/^[a-z0-9-]+$/);
+    assert.ok(lessons.some(lesson => lesson.id === session.lessonId));
+    assert.ok(session.summary.length && session.example.lines.length && session.question.answer);
+    assert.ok(session.table.rows.length);
+    assert.ok(session.table.rows.every(row => row.length === session.table.columns.length));
+    assert.ok(session.refs.length && session.refs.every(([,url]) => new URL(url).protocol === 'https:'));
+    const markup = renderSessionContent(session, glossary);
+    assert.doesNotMatch(markup,/\[[a-z][a-z0-9_-]*\]/i);
+    const tokens = [...JSON.stringify(session).matchAll(/\[([a-z][a-z0-9_-]*)\]/gi)].map(([,key]) => key);
+    for (const key of new Set(tokens)) {
+      assert.ok(session.terms.includes(key), `Missing glossary listing for ${key}`);
+      const [persian,english,abbreviation] = glossary[key];
+      const expanded = expandTerms(`[${key}] و [${key}]`, glossary);
+      assert.equal(expanded.split(persian).length - 1,2);
+      assert.equal(expanded.split(english).length - 1,2);
+      if (abbreviation) assert.equal(expanded.split(abbreviation).length - 1,2);
+    }
+    assert.ok(session.terms.every(key => tokens.includes(key)));
+  }
+  assert.doesNotMatch(expandTerms('<img onerror="bad">',glossary),/<img/);
 });

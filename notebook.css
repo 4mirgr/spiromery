@@ -1,0 +1,451 @@
+.notebook {
+  --book-ink: #15372d;
+  --book-accent: #28624d;
+  --book-paper: #fcfdf9;
+  --book-band: #edf5e9;
+  --book-rule: #d5e3d8;
+  --book-radius: 18px;
+  min-width: 0;
+}
+
+.notebook-cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(20px, 4.5vw, 48px);
+  border: 1px solid #254b40;
+  border-radius: 23px;
+  background: #0d3a30;
+  color: #f2f9ef;
+}
+
+.notebook-cover::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(to left, #0d3a30 35%, #0d3a30cd 58%, #0d3a3033 85%),
+    url('./assets/lungs.webp') left 24% center / auto 105% no-repeat;
+  content: "";
+}
+
+.notebook-cover-copy {
+  max-width: min(31rem, 100%);
+}
+
+.notebook-cover .notebook-series {
+  color: #bde6bd;
+  font-size: .87rem;
+  font-weight: 650;
+}
+
+.notebook-cover h1 {
+  font-size: clamp(1.9rem, 5.5vw, 3.25rem);
+  letter-spacing: -.04em;
+  margin-block: 5px 6px;
+}
+
+.notebook-cover p {
+  color: #deeee2;
+}
+
+.notebook-print {
+  margin-block-start: 18px;
+  background: var(--lime);
+  border-color: var(--lime);
+  color: #15372a;
+}
+
+.notebook-print:hover {
+  background: #e4fbc4;
+}
+
+.notebook-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(12px, 2.5vw, 26px);
+  margin-block-start: 20px;
+}
+
+.notebook-index,
+.notebook-chapter,
+.notebook-glossary {
+  background: var(--book-paper);
+  border: 1px solid var(--book-rule);
+  border-radius: var(--book-radius);
+}
+
+.notebook-index {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 16px;
+}
+
+.notebook-index h2,
+.notebook-glossary h2 {
+  font-size: 1.08rem;
+}
+
+.notebook-index ol {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.notebook-index li + li {
+  border-top: 1px solid var(--book-rule);
+}
+
+.notebook-index a {
+  display: grid;
+  grid-template-columns: 1.65rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  margin-block: 3px;
+  padding: 6px 5px;
+  border-radius: 7px;
+  font-weight: 650;
+}
+
+.notebook-index a:hover,
+.notebook-index a[aria-current] {
+  background: var(--book-band);
+  color: var(--book-ink);
+}
+
+.notebook-number {
+  display: inline-grid;
+  min-height: 1.65rem;
+  place-items: center;
+  border-radius: 7px;
+  background: #deeddf;
+  font-size: .8rem;
+}
+
+.notebook-chapter,
+.notebook-glossary {
+  margin-block-end: 15px;
+  padding: clamp(16px, 3vw, 34px);
+}
+
+.notebook-chapter {
+  scroll-margin-block-start: 18px;
+}
+
+.notebook-chapter-heading {
+  padding-block-end: 13px;
+  margin-block-end: 16px;
+  border-bottom: 1px solid var(--book-rule);
+}
+
+.notebook-chapter-heading h2 {
+  margin-block: 3px;
+  font-size: clamp(1.32rem, 3.2vw, 2.2rem);
+  letter-spacing: -.028em;
+}
+
+.notebook-chapter-heading p {
+  color: var(--muted);
+}
+
+.notebook-chapter-heading .notebook-chapter-goal {
+  margin-block-start: 5px;
+}
+
+.notebook-chapter-heading .notebook-chapter-meta {
+  color: var(--book-accent);
+  font-size: .85rem;
+  font-weight: 750;
+}
+
+.notebook-content {
+  min-width: 0;
+  color: #223932;
+}
+
+.notebook-content > * + * {
+  margin-block-start: 19px;
+}
+
+.notebook-content h2,
+.notebook-content h3,
+.notebook-table caption {
+  margin-block-end: 5px;
+  color: #15372d;
+  font-size: 1.06rem;
+  font-weight: 800;
+}
+
+.notebook-term bdi {
+  color: #405a4e;
+  font-size: .91em;
+  overflow-wrap: anywhere;
+}
+
+.notebook-series bdi {
+  color: inherit;
+}
+
+.notebook-content li + li {
+  margin-block-start: 4px;
+}
+
+.notebook-content p {
+  line-height: 1.9;
+  white-space: pre-line;
+}
+
+.notebook-summary,
+.notebook-worked,
+.notebook-takeaway {
+  padding: 13px 15px;
+  border: 1px solid #d5e3d8;
+  border-inline-start: 4px solid #539673;
+  border-radius: 11px;
+  background: #edf5e9;
+}
+
+.notebook-summary ul,
+.notebook-worked ol {
+  margin-block: 0;
+}
+
+.notebook-reading {
+  display: grid;
+  gap: 14px;
+}
+
+.notebook-reading section + section {
+  padding-block-start: 12px;
+  border-top: 1px solid #e0e9e0;
+}
+
+.notebook-table {
+  border: 1px solid #d5e3d8;
+  table-layout: fixed;
+  font-size: .91rem;
+}
+
+.notebook-table caption {
+  text-align: start;
+}
+
+.notebook-table th,
+.notebook-table td {
+  padding: 8px 10px;
+  border-color: #d5e3d8;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+  white-space: normal;
+}
+
+.notebook-table thead,
+.notebook-table tbody tr:nth-child(even) {
+  background: #edf5e9;
+}
+
+.notebook-table tbody th {
+  font-weight: 730;
+}
+
+.notebook-table thead th:first-child {
+  width: 32%;
+}
+
+.notebook-worked {
+  border-inline-start-color: #a38a44;
+  background: #faf6e8;
+}
+
+.notebook-takeaway {
+  border-inline-start-color: #73998a;
+  background: #edf4f2;
+}
+
+.notebook-review details {
+  margin-block-start: 7px;
+  padding: 7px 12px;
+  border: 1px solid #d5e3d8;
+  border-radius: 9px;
+  background: #f5f9f2;
+}
+
+.notebook-review summary {
+  color: #20634e;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.notebook-review details[open] summary {
+  margin-block-end: 5px;
+}
+
+.notebook-print-answer {
+  display: none;
+}
+
+.notebook-refs .source-list {
+  margin-block: 0;
+  overflow-wrap: anywhere;
+}
+
+.notebook-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.notebook-glossary ul {
+  columns: 2 19rem;
+  column-gap: 24px;
+  margin-block: 8px 0;
+}
+
+.notebook-glossary li {
+  break-inside: avoid;
+  margin-block-end: 5px;
+}
+
+@media (max-width: 800px) {
+  .notebook-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notebook-index {
+    position: static;
+    max-height: none;
+  }
+
+  .notebook-cover::before {
+    background-position: center, left center;
+  }
+}
+
+@media (max-width: 480px) {
+  .notebook-cover::before {
+    background-image:
+      linear-gradient(to left, #0d3a30 12%, #0d3a30ee 45%, #0d3a3088 100%),
+      url('./assets/lungs.webp');
+  }
+
+  .notebook-table th,
+  .notebook-table td {
+    padding: 6px 5px;
+    font-size: .81rem;
+  }
+
+  .notebook-summary,
+  .notebook-worked,
+  .notebook-takeaway {
+    padding: 10px;
+  }
+}
+
+@page notebook-print {
+  size: A4;
+  margin: 14mm;
+}
+
+@media print {
+  main.shell:has(.notebook) {
+    padding: 0;
+  }
+
+  .notebook {
+    page: notebook-print;
+    font-size: 10pt;
+  }
+
+  .notebook-cover,
+  .notebook-chapter,
+  .notebook-glossary {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .notebook-cover {
+    color: var(--book-ink);
+  }
+
+  .notebook-cover::before,
+  .notebook-print,
+  .notebook-session-actions,
+  .notebook-review details {
+    display: none;
+  }
+
+  .notebook-print-answer {
+    display: block;
+  }
+
+  .notebook-cover p,
+  .notebook-cover .notebook-series {
+    color: var(--book-ink);
+  }
+
+  .notebook-cover h1 {
+    font-size: 24pt;
+  }
+
+  .notebook-grid {
+    display: block;
+    margin-block-start: 8pt;
+  }
+
+  .notebook-index {
+    position: static;
+    max-height: none;
+    padding: 7pt 9pt;
+    margin-block-end: 10pt;
+    break-inside: avoid;
+  }
+
+  .notebook-index ol {
+    margin-block-start: 0;
+  }
+
+  .notebook-index a {
+    margin-block: 0;
+    padding-block: 0;
+  }
+
+  .notebook-chapter + .notebook-chapter {
+    break-before: page;
+  }
+
+  .notebook-chapter-heading,
+  .notebook-summary,
+  .notebook-content tr,
+  .notebook-worked,
+  .notebook-takeaway,
+  .notebook-review,
+  .notebook-refs {
+    break-inside: avoid;
+  }
+
+  .notebook h2,
+  .notebook h3,
+  .notebook-table caption {
+    break-after: avoid;
+  }
+
+  .notebook-content > * + * {
+    margin-block-start: 8pt;
+  }
+
+  .notebook-content p,
+  .notebook-content li,
+  .notebook-table {
+    line-height: 1.65;
+  }
+
+  .notebook-table th,
+  .notebook-table td {
+    padding: 4pt;
+  }
+}
